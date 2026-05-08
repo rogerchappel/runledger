@@ -42,7 +42,7 @@ function flag(parsed: Parsed, name: string, fallback: string): string {
 async function main(argv: string[]): Promise<number> {
   const parsed = parse(argv);
   const [cmd, ledgerArg] = parsed.positional;
-  if (!cmd || cmd === 'help' || parsed.flags.has('help')) {
+  if (!cmd || cmd === 'help' || cmd === 'examples' || parsed.flags.has('help') || parsed.flags.has('examples')) {
     process.stdout.write(usage());
     return 0;
   }

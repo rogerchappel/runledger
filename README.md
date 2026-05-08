@@ -37,6 +37,15 @@ runledger summarize examples/sample-runs.jsonl --out REPORT.md
 runledger summarize examples/sample-runs.jsonl --format json
 ```
 
+### `examples`
+
+Prints copy-pasteable examples without touching the network or filesystem.
+
+```bash
+runledger examples
+runledger --examples
+```
+
 ### `verify`
 
 Recomputes the hash chain and reports tampering or malformed records.
