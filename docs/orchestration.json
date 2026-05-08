@@ -1,0 +1,28 @@
+{
+  "project": "runledger",
+  "repository": "rogerchappel/runledger",
+  "scaffold": {
+    "tool": "StackForge",
+    "template": "oss-cli",
+    "sourcePath": "/Users/roger/Developer/my-opensource/stackforge"
+  },
+  "prd": "/Users/roger/Developer/my-opensource/oss-ideas/ideas/in-progress/runledger/PRD.md",
+  "gates": [
+    "npm test",
+    "npm run check",
+    "npm run build",
+    "npm run smoke",
+    "bash scripts/validate.sh"
+  ],
+  "commands": [
+    "record",
+    "summarize",
+    "verify"
+  ],
+  "safety": {
+    "localFirst": true,
+    "telemetry": false,
+    "redactionDefault": true,
+    "networkCallsInCli": false
+  }
+}
