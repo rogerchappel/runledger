@@ -23,7 +23,8 @@ function parse(argv: string[]): Parsed {
   for (let i = 0; i < before.length; i += 1) {
     const arg = before[i] as string;
     if (arg.startsWith('--')) {
-      const [key, inline] = arg.slice(2).split('=', 2);
+      const [rawKey, inline] = arg.slice(2).split('=', 2);
+      const key = rawKey ?? '';
       if (key.startsWith('no-')) flags.set(key.slice(3), false);
       else if (inline !== undefined) flags.set(key, inline);
       else if (before[i + 1] && !before[i + 1]!.startsWith('--')) flags.set(key, before[++i] as string);
