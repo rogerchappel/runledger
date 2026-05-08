@@ -4,11 +4,11 @@
   "description": "Local-first tamper-evident command run ledger for developers and agents.",
   "type": "module",
   "bin": {
-    "runledger": "./dist/index.js"
+    "runledger": "./dist/src/index.js"
   },
-  "main": "./dist/index.js",
+  "main": "./dist/src/index.js",
   "exports": {
-    ".": "./dist/index.js"
+    ".": "./dist/src/index.js"
   },
   "files": [
     "dist",
