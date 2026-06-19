@@ -89,6 +89,10 @@ npm run smoke
 bash scripts/validate.sh
 ```
 
+## Release readiness
+
+Use [docs/release-readiness.md](docs/release-readiness.md) before opening release PRs or tagging a release.
+
 ## Contributing
 
 Issues and PRs are welcome. Please keep changes small, include fixtures for behavior changes, and avoid telemetry or surprise network behavior. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).

@@ -8,6 +8,8 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/
 
 ### Added
 
+- Added a release-readiness checklist for local verification and package review.
+
 - Local-first `record`, `summarize`, `verify`, and `examples` commands.
 - Tamper-evident JSONL hash chaining.
 - Default redaction for common secret, token, password, and bearer credential shapes.
