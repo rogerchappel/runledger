@@ -7,14 +7,22 @@
     "runledger": "./dist/src/index.js"
   },
   "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "exports": {
-    ".": "./dist/src/index.js"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
   },
   "files": [
     "dist",
+    "docs",
     "examples",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md"
   ],
   "scripts": {
     "build": "tsc",
@@ -34,6 +42,14 @@
   ],
   "author": "Roger Chappel",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rogerchappel/runledger.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rogerchappel/runledger/issues"
+  },
+  "homepage": "https://github.com/rogerchappel/runledger#readme",
   "engines": {
     "node": ">=20"
   },
