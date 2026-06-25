@@ -2,18 +2,12 @@
 
 ## Supported Versions
 
-Replace this section with the supported versions for `runledger`.
+runledger is pre-1.0 software. Security fixes are handled on the latest released 0.1.x line when a release exists; older snapshots and unreleased local builds are not separately supported.
 
-Example:
-
-```md
 | Version | Supported |
 | --- | --- |
-| .x | Yes |
-| < .0 | No |
-```
-
-If the project does not publish versioned releases yet, say that clearly.
+| 0.1.x | Best effort |
+| < 0.1.0 | No |
 
 ## Reporting a Vulnerability
 

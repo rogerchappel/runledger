@@ -15,13 +15,13 @@
     }
   },
   "files": [
-    "dist",
+    "dist/src",
     "docs",
     "examples",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md",
     "SECURITY.md",
+    "CHANGELOG.md",
     "CONTRIBUTING.md"
   ],
   "scripts": {
