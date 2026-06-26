@@ -9,12 +9,12 @@ It is for developers and agentic coding loops that need evidence without sending
 ```bash
 npm install
 npm run build
-node dist/index.js record -- npm test
-node dist/index.js summarize .runledger/runs.jsonl --out REPORT.md
-node dist/index.js verify .runledger/runs.jsonl --fail-on changed
+node dist/src/index.js record -- npm test
+node dist/src/index.js summarize .runledger/runs.jsonl --out REPORT.md
+node dist/src/index.js verify .runledger/runs.jsonl --fail-on changed
 ```
 
-After install from npm, use `runledger` instead of `node dist/index.js`.
+After install from npm, use `runledger` instead of `node dist/src/index.js`.
 
 ## Commands
 
@@ -70,8 +70,8 @@ Checked-in fixtures live in [`examples/`](examples/):
 
 ```bash
 npm run build
-node dist/index.js verify examples/sample-runs.jsonl
-node dist/index.js summarize examples/sample-runs.jsonl --format json
+node dist/src/index.js verify examples/sample-runs.jsonl
+node dist/src/index.js summarize examples/sample-runs.jsonl --format json
 npm run smoke
 ```
 
@@ -86,6 +86,8 @@ npm test
 npm run check
 npm run build
 npm run smoke
+npm run package:smoke
+npm run release:check
 bash scripts/validate.sh
 ```
 
