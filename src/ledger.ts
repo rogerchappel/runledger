@@ -47,6 +47,10 @@ export async function appendRecord(file: string, record: RunRecord): Promise<voi
 export async function lastHash(file: string): Promise<string> {
   try {
     const verify = parseLedger(await readFile(file, 'utf8'));
+    if (!verify.ok) {
+      const details = verify.issues.map((issue) => `line ${issue.line}: ${issue.kind}`).join(', ');
+      throw new Error(`existing ledger is invalid (${details})`);
+    }
     return verify.records.at(-1)?.hash ?? GENESIS_HASH;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return GENESIS_HASH;
