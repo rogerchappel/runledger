@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -16,6 +16,28 @@ test('CLI renders examples', async () => {
 test('CLI verify renders JSON for fixture', async () => {
   const { stdout } = await execFileAsync(process.execPath, ['dist/src/index.js', 'verify', 'examples/sample-runs.jsonl', '--format', 'json']);
   const parsed = JSON.parse(stdout) as { ok: boolean; records: unknown[] };
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.records.length, 2);
+});
+
+test('CLI runs examples and functional commands through an aliased project path', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-alias-'));
+  const projectAlias = path.join(directory, 'project');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await symlink(process.cwd(), projectAlias, 'dir');
+  const cli = path.join(projectAlias, 'dist/src/index.js');
+
+  const examples = await execFileAsync(process.execPath, [cli, 'examples']);
+  assert.match(examples.stdout, /runledger record/);
+
+  const verify = await execFileAsync(process.execPath, [
+    cli,
+    'verify',
+    path.join(projectAlias, 'examples/sample-runs.jsonl'),
+    '--format',
+    'json'
+  ]);
+  const parsed = JSON.parse(verify.stdout) as { ok: boolean; records: unknown[] };
   assert.equal(parsed.ok, true);
   assert.equal(parsed.records.length, 2);
 });

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
+import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { appendRecord, lastHash, parseLedger, summarize, writeOutput } from './ledger.js';
 import { recordRun } from './record.js';
 import { renderJson, renderSummaryMarkdown, renderVerifyMarkdown } from './render.js';
@@ -77,7 +79,16 @@ async function main(argv: string[]): Promise<number> {
   throw new Error(`unknown command: ${cmd}`);
 }
 
-if (process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').href) {
+function isMain(moduleUrl: string, argvEntry: string | undefined): boolean {
+  if (!argvEntry) return false;
+  try {
+    return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argvEntry);
+  } catch {
+    return false;
+  }
+}
+
+if (isMain(import.meta.url, process.argv[1])) {
   main(process.argv.slice(2)).then((code) => {
     process.exitCode = code;
   }).catch((error: unknown) => {
