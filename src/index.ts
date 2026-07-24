@@ -41,6 +41,19 @@ function flag(parsed: Parsed, name: string, fallback: string): string {
   return typeof value === 'string' ? value : fallback;
 }
 
+function enumFlag<const T extends readonly string[]>(
+  parsed: Parsed,
+  name: string,
+  allowed: T,
+  fallback: T[number]
+): T[number] {
+  const value = flag(parsed, name, fallback);
+  if (!allowed.includes(value)) {
+    throw new Error(`--${name} must be one of: ${allowed.join(', ')}`);
+  }
+  return value as T[number];
+}
+
 async function main(argv: string[]): Promise<number> {
   const parsed = parse(argv);
   const [cmd, ledgerArg] = parsed.positional;
@@ -59,7 +72,7 @@ async function main(argv: string[]): Promise<number> {
     if (!ledgerArg) throw new Error('summarize requires a ledger path');
     const result = parseLedger(await readFile(ledgerArg, 'utf8'));
     const summary = summarize(result.records, !result.ok);
-    const format = flag(parsed, 'format', 'markdown');
+    const format = enumFlag(parsed, 'format', ['markdown', 'json'], 'markdown');
     const content = format === 'json' ? renderJson(summary) : renderSummaryMarkdown(summary);
     await writeOutput(typeof parsed.flags.get('out') === 'string' ? parsed.flags.get('out') as string : undefined, content);
     return 0;
@@ -67,10 +80,10 @@ async function main(argv: string[]): Promise<number> {
   if (cmd === 'verify') {
     if (!ledgerArg) throw new Error('verify requires a ledger path');
     const result = parseLedger(await readFile(ledgerArg, 'utf8'));
-    const format = flag(parsed, 'format', 'markdown');
+    const format = enumFlag(parsed, 'format', ['markdown', 'json'], 'markdown');
     const content = format === 'json' ? renderJson(result) : renderVerifyMarkdown(result);
     await writeOutput(typeof parsed.flags.get('out') === 'string' ? parsed.flags.get('out') as string : undefined, content);
-    const failOn = flag(parsed, 'fail-on', 'invalid');
+    const failOn = enumFlag(parsed, 'fail-on', ['changed', 'failed', 'invalid'], 'invalid');
     if (failOn === 'changed' && !result.ok) return 2;
     if (failOn === 'invalid' && !result.ok) return 2;
     if (failOn === 'failed' && result.records.some((record) => record.status === 'failed')) return 3;
