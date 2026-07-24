@@ -6,6 +6,6 @@ Try it:
 
 ```bash
 npm run build
-node dist/index.js verify examples/sample-runs.jsonl
-node dist/index.js summarize examples/sample-runs.jsonl --format json
+node dist/src/index.js verify examples/sample-runs.jsonl
+node dist/src/index.js summarize examples/sample-runs.jsonl --format json
 ```

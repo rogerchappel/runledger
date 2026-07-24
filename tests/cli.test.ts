@@ -13,6 +13,17 @@ test('CLI renders examples', async () => {
   assert.match(stdout, /runledger record/);
 });
 
+test('documented example commands execute after build', async () => {
+  const readme = await readFile('examples/README.md', 'utf8');
+  const commands = [...readme.matchAll(/^node (.+)$/gm)].map((match) => match[1]?.split(/\s+/) ?? []);
+  assert.equal(commands.length, 2);
+
+  for (const args of commands) {
+    const { stdout } = await execFileAsync(process.execPath, args);
+    assert.notEqual(stdout.trim(), '');
+  }
+});
+
 test('CLI verify renders JSON for fixture', async () => {
   const { stdout } = await execFileAsync(process.execPath, ['dist/src/index.js', 'verify', 'examples/sample-runs.jsonl', '--format', 'json']);
   const parsed = JSON.parse(stdout) as { ok: boolean; records: unknown[] };
