@@ -12,9 +12,10 @@ export function parseLedger(text: string): VerifyResult {
   const records: RunRecord[] = [];
   const issues: VerifyIssue[] = [];
   let expectedPrev = GENESIS_HASH;
-  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const lines = text.split(/\r?\n/);
   lines.forEach((line, index) => {
     const lineNo = index + 1;
+    if (line.trim().length === 0) return;
     let record: RunRecord;
     try {
       record = JSON.parse(line) as RunRecord;

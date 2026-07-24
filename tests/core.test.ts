@@ -24,6 +24,13 @@ test('tampering is detected', async () => {
   assert.equal(result.issues.some((issue) => issue.kind === 'hash-mismatch'), true);
 });
 
+test('verification issues retain physical line numbers across blank lines', () => {
+  const result = parseLedger('\n{not json}\n');
+  assert.equal(result.ok, false);
+  assert.equal(result.issues[0]?.line, 2);
+  assert.equal(result.issues[0]?.kind, 'parse-error');
+});
+
 test('redacts common secret shapes', () => {
   const redacted = redactSecrets('token=ghp_abcdefghijklmnopqrstuvwxyz123456 Bearer abc.def.ghi password=hunter2');
   assert.equal(redacted.includes('ghp_'), false);
