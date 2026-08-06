@@ -30,7 +30,7 @@
     "test": "npm run build && node --test dist/tests/*.test.js",
     "smoke": "bash scripts/smoke.sh",
     "prepack": "npm run build",
-    "package:smoke": "npm run build && test -f dist/src/index.js && test -f dist/src/index.d.ts && test -f examples/sample-runs.jsonl && npm pack --dry-run",
+    "package:smoke": "bash scripts/package-smoke.sh",
     "release:check": "npm test && npm run check && npm run build && npm run smoke && npm run package:smoke"
   },
   "keywords": [
