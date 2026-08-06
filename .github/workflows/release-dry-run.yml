@@ -27,6 +27,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          registry-url: https://registry.npmjs.org
       - name: Install dependencies
         run: npm ci
       - name: Install ReleaseBox
@@ -39,6 +40,10 @@ jobs:
         run: node /tmp/releasebox/bin/releasebox.js check .
       - name: Run release checks
         run: npm run release:check
+      - name: Pack package
+        run: echo "TARFILE=$(npm pack --silent)" >> "$GITHUB_ENV"
+      - name: Dry-run npm publication
+        run: npm publish "$TARFILE" --dry-run --access public
       - name: Release notes preview
         run: |
           node /tmp/releasebox/bin/releasebox.js notes . > release-notes-preview.md

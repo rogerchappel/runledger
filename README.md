@@ -14,7 +14,10 @@ node dist/src/index.js summarize .runledger/runs.jsonl --out REPORT.md
 node dist/src/index.js verify .runledger/runs.jsonl --fail-on changed
 ```
 
-After install from npm, use `runledger` instead of `node dist/src/index.js`.
+RunLedger has not had its first npm release yet. Until the first tagged release,
+use the source-checkout commands above. Tagged releases publish the `runledger`
+package to npm; after publication, install it with `npm install --global
+runledger` and use `runledger` instead of `node dist/src/index.js`.
 
 ## Commands
 

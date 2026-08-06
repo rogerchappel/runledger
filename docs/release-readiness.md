@@ -15,7 +15,17 @@ npm run release:check
 
 ## Package contents
 
-Run `npm run package:smoke` when available and review the dry-run file list for only the built runtime, README, license, and other intentional release assets.
+Run `npm run package:smoke` to create the package tarball, install it into an
+isolated temporary project, and execute the installed `runledger --help`
+binary. The temporary project and tarball are removed after the check.
+
+## Publication contract
+
+RunLedger has not had its first npm release. A `v*.*.*` tag triggers the release
+workflow, which packs once, publishes that exact tarball to npm with public
+access and provenance, and attaches the same tarball to the GitHub release.
+Pull requests that change the release surface pack once and exercise `npm
+publish <tarball> --dry-run --access public` without publishing.
 
 ## Notes
 
