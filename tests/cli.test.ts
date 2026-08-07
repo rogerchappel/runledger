@@ -31,6 +31,82 @@ test('CLI verify renders JSON for fixture', async () => {
   assert.equal(parsed.records.length, 2);
 });
 
+for (const [command, args] of [
+  ['record', ['--typo', '--', process.execPath, '-e', 'process.exit(0)']],
+  ['summarize', ['examples/sample-runs.jsonl', '--typo']],
+  ['verify', ['examples/sample-runs.jsonl', '--typo']]
+] as const) {
+  test(`CLI rejects unknown options for ${command}`, async () => {
+    await assert.rejects(
+      execFileAsync(process.execPath, ['dist/src/index.js', command, ...args]),
+      (error: Error & { code?: number; stderr?: string }) => {
+        assert.equal(error.code, 1);
+        assert.match(error.stderr ?? '', /unknown option: --typo/);
+        return true;
+      }
+    );
+  });
+}
+
+for (const [command, option] of [
+  ['record', '--ledger'],
+  ['summarize', '--out'],
+  ['summarize', '--format'],
+  ['verify', '--out'],
+  ['verify', '--format'],
+  ['verify', '--fail-on']
+] as const) {
+  test(`CLI rejects a missing value for ${option} on ${command}`, async () => {
+    const ledger = command === 'record' ? [] : ['examples/sample-runs.jsonl'];
+    await assert.rejects(
+      execFileAsync(process.execPath, ['dist/src/index.js', command, ...ledger, option]),
+      (error: Error & { code?: number; stderr?: string }) => {
+        assert.equal(error.code, 1);
+        assert.match(error.stderr ?? '', new RegExp(`${option} requires a value`));
+        return true;
+      }
+    );
+  });
+}
+
+test('malformed record options neither run the command nor write a ledger', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-options-'));
+  const ledger = path.join(directory, 'runs.jsonl');
+  const marker = path.join(directory, 'command-ran');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      'dist/src/index.js',
+      'record',
+      '--ledger',
+      '--',
+      process.execPath,
+      '-e',
+      `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'ran')`
+    ]),
+    (error: Error & { code?: number; stderr?: string }) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr ?? '', /--ledger requires a value/);
+      return true;
+    }
+  );
+
+  await assert.rejects(readFile(marker), { code: 'ENOENT' });
+  await assert.rejects(readFile(ledger), { code: 'ENOENT' });
+});
+
+test('CLI rejects options that belong to a different command', async () => {
+  await assert.rejects(
+    execFileAsync(process.execPath, ['dist/src/index.js', 'verify', 'examples/sample-runs.jsonl', '--ledger', 'other.jsonl']),
+    (error: Error & { code?: number; stderr?: string }) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr ?? '', /unknown option for verify: --ledger/);
+      return true;
+    }
+  );
+});
+
 for (const [command, flag, value, allowed] of [
   ['summarize', '--format', 'yaml', 'markdown, json'],
   ['verify', '--format', 'yaml', 'markdown, json'],

@@ -12,6 +12,9 @@ interface Parsed {
   command: string[];
 }
 
+const valueOptions = new Set(['ledger', 'out', 'format', 'fail-on']);
+const booleanOptions = new Set(['redact', 'help', 'examples']);
+
 function usage(): string {
   return `RunLedger — local-first command evidence\n\nUsage:\n  runledger record [--ledger .runledger/runs.jsonl] [--no-redact] -- <command> [args...]\n  runledger summarize <ledger> [--format markdown|json] [--out file]\n  runledger verify <ledger> [--format markdown|json] [--fail-on changed|failed|invalid]\n\nExamples:\n  runledger record -- npm test\n  runledger summarize .runledger/runs.jsonl --out REPORT.md\n  runledger verify .runledger/runs.jsonl --fail-on changed\n`;
 }
@@ -27,13 +30,35 @@ function parse(argv: string[]): Parsed {
     if (arg.startsWith('--')) {
       const [rawKey, inline] = arg.slice(2).split('=', 2);
       const key = rawKey ?? '';
-      if (key.startsWith('no-')) flags.set(key.slice(3), false);
-      else if (inline !== undefined) flags.set(key, inline);
-      else if (before[i + 1] && !before[i + 1]!.startsWith('--')) flags.set(key, before[++i] as string);
-      else flags.set(key, true);
+      if (key === 'no-redact' && inline === undefined) {
+        flags.set('redact', false);
+      } else if (booleanOptions.has(key) && inline === undefined) {
+        flags.set(key, true);
+      } else if (valueOptions.has(key)) {
+        if (inline !== undefined && inline !== '') flags.set(key, inline);
+        else if (inline === undefined && before[i + 1] && !before[i + 1]!.startsWith('--')) flags.set(key, before[++i] as string);
+        else throw new Error(`--${key} requires a value`);
+      } else {
+        throw new Error(`unknown option: --${key}`);
+      }
     } else positional.push(arg);
   }
   return { flags, positional, command };
+}
+
+function validateOptions(parsed: Parsed, command: string): void {
+  const common = new Set(['help', 'examples']);
+  const commandOptions: Record<string, Set<string>> = {
+    record: new Set(['ledger', 'redact']),
+    summarize: new Set(['format', 'out']),
+    verify: new Set(['format', 'out', 'fail-on'])
+  };
+  const allowed = commandOptions[command];
+  for (const option of parsed.flags.keys()) {
+    if (!common.has(option) && !allowed?.has(option)) {
+      throw new Error(`unknown option for ${command}: --${option}`);
+    }
+  }
 }
 
 function flag(parsed: Parsed, name: string, fallback: string): string {
@@ -61,6 +86,7 @@ async function main(argv: string[]): Promise<number> {
     process.stdout.write(usage());
     return 0;
   }
+  validateOptions(parsed, cmd);
   if (cmd === 'record') {
     const ledger = flag(parsed, 'ledger', '.runledger/runs.jsonl');
     const prevHash = await lastHash(ledger);
