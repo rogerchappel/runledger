@@ -21,6 +21,10 @@ runledger` and use `runledger` instead of `node dist/src/index.js`.
 
 ## Commands
 
+Options that take values accept either `--option value` or `--option=value`.
+Unknown options and value-taking options without a value are rejected before a
+command runs or writes output.
+
 ### `record`
 
 Runs a command and appends one JSONL record.
