@@ -27,12 +27,12 @@ export async function recordRun(options: RecordRunOptions): Promise<RunRecord> {
   child.stdout?.on('data', (chunk: Buffer) => {
     const text = chunk.toString('utf8');
     stdout += text;
-    process.stdout.write(text);
+    if (!options.redact) process.stdout.write(text);
   });
   child.stderr?.on('data', (chunk: Buffer) => {
     const text = chunk.toString('utf8');
     stderr += text;
-    process.stderr.write(text);
+    if (!options.redact) process.stderr.write(text);
   });
   const { code, signal } = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
     child.on('error', reject);
@@ -41,6 +41,10 @@ export async function recordRun(options: RecordRunOptions): Promise<RunRecord> {
   const finished = options.now?.() ?? new Date();
   const cleanStdout = options.redact ? redactSecrets(stdout) : stdout;
   const cleanStderr = options.redact ? redactSecrets(stderr) : stderr;
+  if (options.redact) {
+    process.stdout.write(cleanStdout);
+    process.stderr.write(cleanStderr);
+  }
   return withHash({
     schema: 'runledger.v1',
     id: options.id ?? randomUUID(),
