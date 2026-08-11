@@ -208,3 +208,78 @@ test('CLI record refuses to run or append when the existing ledger is tampered',
   assert.deepEqual(await readFile(ledger), before);
   await assert.rejects(readFile(marker), { code: 'ENOENT' });
 });
+
+for (const stream of ['stdout', 'stderr'] as const) {
+  test(`CLI record redacts forwarded and stored ${stream} by default`, async (t) => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'runledger-redaction-'));
+    const ledger = path.join(directory, 'runs.jsonl');
+    const secret = 'token=abcdefghijklmnopqrstuvwx';
+    t.after(() => rm(directory, { recursive: true, force: true }));
+
+    const result = await execFileAsync(process.execPath, [
+      'dist/src/index.js',
+      'record',
+      '--ledger',
+      ledger,
+      '--',
+      process.execPath,
+      '-e',
+      `process.${stream}.write(${JSON.stringify(secret)})`
+    ]);
+    const record = JSON.parse(await readFile(ledger, 'utf8')) as Record<typeof stream, string>;
+
+    assert.equal(result[stream], 'token=[REDACTED]');
+    assert.equal(record[stream], 'token=[REDACTED]');
+    assert.doesNotMatch(result[stream], /abcdefghijklmnopqrstuvwx/);
+  });
+
+  test(`CLI record preserves raw forwarded and stored ${stream} with --no-redact`, async (t) => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'runledger-no-redaction-'));
+    const ledger = path.join(directory, 'runs.jsonl');
+    const secret = 'token=abcdefghijklmnopqrstuvwx';
+    t.after(() => rm(directory, { recursive: true, force: true }));
+
+    const result = await execFileAsync(process.execPath, [
+      'dist/src/index.js',
+      'record',
+      '--no-redact',
+      '--ledger',
+      ledger,
+      '--',
+      process.execPath,
+      '-e',
+      `process.${stream}.write(${JSON.stringify(secret)})`
+    ]);
+    const record = JSON.parse(await readFile(ledger, 'utf8')) as Record<typeof stream, string>;
+
+    assert.equal(result[stream], secret);
+    assert.equal(record[stream], secret);
+  });
+}
+
+test('CLI record preserves command failure after redacting forwarded output', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-redacted-failure-'));
+  const ledger = path.join(directory, 'runs.jsonl');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      'dist/src/index.js',
+      'record',
+      '--ledger',
+      ledger,
+      '--',
+      process.execPath,
+      '-e',
+      'console.error("password=hunter2"); process.exit(23)'
+    ]),
+    (error: Error & { code?: number; stderr?: string }) => {
+      assert.equal(error.code, 23);
+      assert.equal(error.stderr, 'password=[REDACTED]\n');
+      return true;
+    }
+  );
+  const record = JSON.parse(await readFile(ledger, 'utf8')) as { exitCode: number; status: string };
+  assert.equal(record.exitCode, 23);
+  assert.equal(record.status, 'failed');
+});
