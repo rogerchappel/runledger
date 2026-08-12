@@ -283,3 +283,81 @@ test('CLI record preserves command failure after redacting forwarded output', as
   assert.equal(record.exitCode, 23);
   assert.equal(record.status, 'failed');
 });
+
+for (const existingRecords of [0, 1]) {
+  test(`CLI records a command launch failure after ${existingRecords === 0 ? 'creating' : 'reading'} a ledger`, async (t) => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'runledger-launch-failure-'));
+    const ledger = path.join(directory, 'runs.jsonl');
+    const missingCommand = 'runledger-command-that-does-not-exist-token=abcdefghijklmnopqrstuvwx';
+    t.after(() => rm(directory, { recursive: true, force: true }));
+
+    if (existingRecords === 1) {
+      await execFileAsync(process.execPath, [
+        'dist/src/index.js',
+        'record',
+        '--ledger',
+        ledger,
+        '--',
+        process.execPath,
+        '-e',
+        'process.exit(0)'
+      ]);
+    }
+
+    await assert.rejects(
+      execFileAsync(process.execPath, ['dist/src/index.js', 'record', '--ledger', ledger, '--', missingCommand, '--flag']),
+      (error: Error & { code?: number; stderr?: string }) => {
+        assert.equal(error.code, 1);
+        assert.match(error.stderr ?? '', /command launch failed \(ENOENT\)/);
+        assert.doesNotMatch(error.stderr ?? '', /abcdefghijklmnopqrstuvwx/);
+        return true;
+      }
+    );
+
+    const lines = (await readFile(ledger, 'utf8')).trim().split('\n');
+    assert.equal(lines.length, existingRecords + 1);
+    const failed = JSON.parse(lines.at(-1) ?? '') as {
+      command: string[];
+      cwd: string;
+      startedAt: string;
+      finishedAt: string;
+      durationMs: number;
+      exitCode: number;
+      signal: string | null;
+      status: string;
+      stdout: string;
+      stderr: string;
+      redacted: boolean;
+    };
+    assert.deepEqual(failed.command, [missingCommand, '--flag']);
+    assert.equal(failed.cwd, process.cwd());
+    assert.equal(Number.isNaN(Date.parse(failed.startedAt)), false);
+    assert.equal(Number.isNaN(Date.parse(failed.finishedAt)), false);
+    assert.ok(failed.durationMs >= 0);
+    assert.equal(failed.exitCode, 1);
+    assert.equal(failed.signal, null);
+    assert.equal(failed.status, 'failed');
+    assert.equal(failed.stdout, '');
+    assert.match(failed.stderr, /command launch failed \(ENOENT\)/);
+    assert.doesNotMatch(failed.stderr, /abcdefghijklmnopqrstuvwx/);
+    assert.equal(failed.redacted, true);
+
+    const verify = await execFileAsync(process.execPath, ['dist/src/index.js', 'verify', ledger, '--format', 'json']);
+    assert.equal((JSON.parse(verify.stdout) as { ok: boolean }).ok, true);
+
+    await execFileAsync(process.execPath, [
+      'dist/src/index.js',
+      'record',
+      '--ledger',
+      ledger,
+      '--',
+      process.execPath,
+      '-e',
+      'process.exit(0)'
+    ]);
+    const verifyAfterAppend = await execFileAsync(process.execPath, ['dist/src/index.js', 'verify', ledger, '--format', 'json']);
+    const verified = JSON.parse(verifyAfterAppend.stdout) as { ok: boolean; records: unknown[] };
+    assert.equal(verified.ok, true);
+    assert.equal(verified.records.length, existingRecords + 2);
+  });
+}
