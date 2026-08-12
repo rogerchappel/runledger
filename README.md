@@ -34,6 +34,10 @@ runledger record --ledger .runledger/runs.jsonl -- npm test
 ```
 
 Each record includes command, cwd, timestamps, duration, exit code, stdout/stderr, previous hash, and record hash.
+If the operating system cannot launch the command (for example, because the
+executable does not exist), `record` still appends a failed record with exit
+code 1 and a diagnostic in stderr. The attempted command remains part of the
+hash chain, and later runs can append normally.
 By default, command output is buffered until the command finishes, then the same
 redacted stdout and stderr written to the record are forwarded to the terminal.
 Use `--no-redact` only when raw output is explicitly required; it is forwarded

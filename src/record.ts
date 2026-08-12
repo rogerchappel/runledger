@@ -34,10 +34,18 @@ export async function recordRun(options: RecordRunOptions): Promise<RunRecord> {
     stderr += text;
     if (!options.redact) process.stderr.write(text);
   });
-  const { code, signal } = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
-    child.on('error', reject);
+  const { code, signal, launchError } = await new Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+    launchError?: NodeJS.ErrnoException;
+  }>((resolve) => {
+    child.on('error', (error: NodeJS.ErrnoException) => resolve({ code: 1, signal: null, launchError: error }));
     child.on('close', (exitCode, exitSignal) => resolve({ code: exitCode, signal: exitSignal }));
   });
+  if (launchError) {
+    const errorCode = launchError.code ?? 'UNKNOWN';
+    stderr += `command launch failed (${errorCode}): ${launchError.message}\n`;
+  }
   const finished = options.now?.() ?? new Date();
   const cleanStdout = options.redact ? redactSecrets(stdout) : stdout;
   const cleanStderr = options.redact ? redactSecrets(stderr) : stderr;
