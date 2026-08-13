@@ -101,6 +101,12 @@ async function main(argv: string[]): Promise<number> {
     const format = enumFlag(parsed, 'format', ['markdown', 'json'], 'markdown');
     const content = format === 'json' ? renderJson(summary) : renderSummaryMarkdown(summary);
     await writeOutput(typeof parsed.flags.get('out') === 'string' ? parsed.flags.get('out') as string : undefined, content);
+    if (!result.ok) {
+      for (const issue of result.issues) {
+        process.stderr.write(`line ${issue.line}: ${issue.kind}: ${issue.message}\n`);
+      }
+      return 2;
+    }
     return 0;
   }
   if (cmd === 'verify') {

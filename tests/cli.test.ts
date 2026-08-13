@@ -31,6 +31,65 @@ test('CLI verify renders JSON for fixture', async () => {
   assert.equal(parsed.records.length, 2);
 });
 
+for (const format of ['markdown', 'json'] as const) {
+  test(`CLI summarize renders valid ${format} deterministically`, async () => {
+    const args = ['dist/src/index.js', 'summarize', 'examples/sample-runs.jsonl', '--format', format];
+    const first = await execFileAsync(process.execPath, args);
+    const second = await execFileAsync(process.execPath, args);
+    assert.equal(first.stdout, second.stdout);
+    assert.equal(first.stderr, '');
+    if (format === 'json') {
+      const summary = JSON.parse(first.stdout) as { total: number; changed: boolean };
+      assert.equal(summary.total, 2);
+      assert.equal(summary.changed, false);
+    } else {
+      assert.match(first.stdout, /# RunLedger Summary/);
+      assert.match(first.stdout, /- Changed: no/);
+    }
+  });
+}
+
+test('CLI summarize reports malformed JSON and exits nonzero while retaining the summary', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-summary-invalid-'));
+  const ledger = path.join(directory, 'runs.jsonl');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await writeFile(ledger, '{not json}\n', 'utf8');
+
+  await assert.rejects(
+    execFileAsync(process.execPath, ['dist/src/index.js', 'summarize', ledger, '--format', 'json']),
+    (error: Error & { code?: number; stdout?: string; stderr?: string }) => {
+      assert.equal(error.code, 2);
+      assert.deepEqual(JSON.parse(error.stdout ?? ''), {
+        total: 0, passed: 0, failed: 0, changed: true,
+        firstStartedAt: null, lastFinishedAt: null, records: []
+      });
+      assert.match(error.stderr ?? '', /^line 1: parse-error: /);
+      return true;
+    }
+  );
+});
+
+test('CLI summarize reports a hash-chain mismatch and exits nonzero', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-summary-chain-'));
+  const ledger = path.join(directory, 'runs.jsonl');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const lines = (await readFile('examples/sample-runs.jsonl', 'utf8')).trim().split('\n');
+  const second = JSON.parse(lines[1] ?? '') as { prevHash: string };
+  second.prevHash = '0'.repeat(64);
+  await writeFile(ledger, `${lines[0]}\n${JSON.stringify(second)}\n`, 'utf8');
+
+  await assert.rejects(
+    execFileAsync(process.execPath, ['dist/src/index.js', 'summarize', ledger]),
+    (error: Error & { code?: number; stdout?: string; stderr?: string }) => {
+      assert.equal(error.code, 2);
+      assert.match(error.stdout ?? '', /- Changed: yes/);
+      assert.match(error.stderr ?? '', /line 2: prev-hash-mismatch:/);
+      assert.match(error.stderr ?? '', /line 2: hash-mismatch:/);
+      return true;
+    }
+  );
+});
+
 for (const [command, args] of [
   ['record', ['--typo', '--', process.execPath, '-e', 'process.exit(0)']],
   ['summarize', ['examples/sample-runs.jsonl', '--typo']],

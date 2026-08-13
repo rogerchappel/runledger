@@ -52,6 +52,13 @@ runledger summarize examples/sample-runs.jsonl --out REPORT.md
 runledger summarize examples/sample-runs.jsonl --format json
 ```
 
+`summarize` verifies the ledger before rendering. For a valid ledger it writes a
+deterministic Markdown or JSON summary and exits `0`. For malformed JSON, an
+invalid record schema, a broken previous-hash link, or a record-hash mismatch,
+it still writes the useful partial summary (with `changed` set to `true`),
+reports every concrete issue on stderr, and exits `2`. When `--out` is used,
+the partial summary is written there while diagnostics remain on stderr.
+
 ### `examples`
 
 Prints copy-pasteable examples without touching the network or filesystem.
