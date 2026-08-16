@@ -4,6 +4,33 @@ import { redactSecrets } from './redact.js';
 import { withHash } from './hash.js';
 import type { RunRecord } from './types.js';
 
+export const OUTPUT_CAPTURE_LIMIT_BYTES = 1024 * 1024;
+
+class BoundedCapture {
+  private readonly chunks: Buffer[] = [];
+  private retainedBytes = 0;
+  private totalBytes = 0;
+
+  append(chunk: Buffer | string): void {
+    const buffer = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
+    this.totalBytes += buffer.length;
+    const available = OUTPUT_CAPTURE_LIMIT_BYTES - this.retainedBytes;
+    if (available > 0) {
+      const retained = buffer.subarray(0, available);
+      this.chunks.push(retained);
+      this.retainedBytes += retained.length;
+    }
+  }
+
+  text(): string {
+    const retained = Buffer.concat(this.chunks).toString('utf8');
+    const omittedBytes = this.totalBytes - this.retainedBytes;
+    return omittedBytes === 0
+      ? retained
+      : `${retained}\n[runledger: truncated ${omittedBytes} bytes]\n`;
+  }
+}
+
 export interface RecordRunOptions {
   command: string[];
   cwd: string;
@@ -22,16 +49,16 @@ export async function recordRun(options: RecordRunOptions): Promise<RunRecord> {
     env: process.env,
     stdio: ['ignore', 'pipe', 'pipe']
   });
-  let stdout = '';
-  let stderr = '';
+  const stdoutCapture = new BoundedCapture();
+  const stderrCapture = new BoundedCapture();
   child.stdout?.on('data', (chunk: Buffer) => {
     const text = chunk.toString('utf8');
-    stdout += text;
+    stdoutCapture.append(chunk);
     if (!options.redact) process.stdout.write(text);
   });
   child.stderr?.on('data', (chunk: Buffer) => {
     const text = chunk.toString('utf8');
-    stderr += text;
+    stderrCapture.append(chunk);
     if (!options.redact) process.stderr.write(text);
   });
   const { code, signal, launchError } = await new Promise<{
@@ -44,9 +71,11 @@ export async function recordRun(options: RecordRunOptions): Promise<RunRecord> {
   });
   if (launchError) {
     const errorCode = launchError.code ?? 'UNKNOWN';
-    stderr += `command launch failed (${errorCode}): ${launchError.message}\n`;
+    stderrCapture.append(`command launch failed (${errorCode}): ${launchError.message}\n`);
   }
   const finished = options.now?.() ?? new Date();
+  const stdout = stdoutCapture.text();
+  const stderr = stderrCapture.text();
   const cleanStdout = options.redact ? redactSecrets(stdout) : stdout;
   const cleanStderr = options.redact ? redactSecrets(stderr) : stderr;
   if (options.redact) {

@@ -5,6 +5,7 @@ import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { OUTPUT_CAPTURE_LIMIT_BYTES } from '../src/record.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -313,6 +314,79 @@ for (const stream of ['stdout', 'stderr'] as const) {
 
     assert.equal(result[stream], secret);
     assert.equal(record[stream], secret);
+  });
+}
+
+test('CLI stores output at the capture boundary without a truncation marker', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-output-boundary-'));
+  const ledger = path.join(directory, 'runs.jsonl');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  await execFileAsync(process.execPath, [
+    'dist/src/index.js',
+    'record',
+    '--ledger',
+    ledger,
+    '--',
+    process.execPath,
+    '-e',
+    `process.stdout.write('x'.repeat(${OUTPUT_CAPTURE_LIMIT_BYTES}))`
+  ], { maxBuffer: OUTPUT_CAPTURE_LIMIT_BYTES * 2 });
+
+  const record = JSON.parse(await readFile(ledger, 'utf8')) as { stdout: string };
+  assert.equal(Buffer.byteLength(record.stdout), OUTPUT_CAPTURE_LIMIT_BYTES);
+  assert.doesNotMatch(record.stdout, /runledger: truncated/);
+});
+
+for (const stream of ['stdout', 'stderr'] as const) {
+  test(`CLI bounds large ${stream}, redacts retained text, and keeps the ledger appendable`, async (t) => {
+    const directory = await mkdtemp(path.join(tmpdir(), `runledger-large-${stream}-`));
+    const ledger = path.join(directory, 'runs.jsonl');
+    const secret = 'token=abcdefghijklmnopqrstuvwx';
+    const extraBytes = 17;
+    t.after(() => rm(directory, { recursive: true, force: true }));
+
+    const result = await execFileAsync(process.execPath, [
+      'dist/src/index.js',
+      'record',
+      '--ledger',
+      ledger,
+      '--',
+      process.execPath,
+      '-e',
+      `process.${stream}.write(${JSON.stringify(secret)} + 'x'.repeat(${OUTPUT_CAPTURE_LIMIT_BYTES + extraBytes} - ${secret.length}))`
+    ], { maxBuffer: OUTPUT_CAPTURE_LIMIT_BYTES * 2 });
+    const record = JSON.parse(await readFile(ledger, 'utf8')) as Record<typeof stream, string>;
+
+    assert.match(record[stream], /^token=\[REDACTED\]/);
+    assert.match(record[stream], new RegExp(`\\[runledger: truncated ${extraBytes} bytes\\]\\n$`));
+    assert.equal(result[stream], record[stream]);
+    assert.doesNotMatch(record[stream], /abcdefghijklmnopqrstuvwx/);
+
+    const verify = await execFileAsync(process.execPath, ['dist/src/index.js', 'verify', ledger, '--format', 'json']);
+    assert.equal((JSON.parse(verify.stdout) as { ok: boolean }).ok, true);
+    await execFileAsync(process.execPath, [
+      'dist/src/index.js', 'record', '--ledger', ledger, '--', process.execPath, '-e', 'process.exit(0)'
+    ]);
+    const afterAppend = await execFileAsync(process.execPath, ['dist/src/index.js', 'verify', ledger, '--format', 'json']);
+    assert.equal((JSON.parse(afterAppend.stdout) as { ok: boolean; records: unknown[] }).records.length, 2);
+  });
+
+  test(`CLI forwards all large ${stream} while storing a bounded copy with --no-redact`, async (t) => {
+    const directory = await mkdtemp(path.join(tmpdir(), `runledger-forward-large-${stream}-`));
+    const ledger = path.join(directory, 'runs.jsonl');
+    const outputBytes = OUTPUT_CAPTURE_LIMIT_BYTES + 23;
+    t.after(() => rm(directory, { recursive: true, force: true }));
+
+    const result = await execFileAsync(process.execPath, [
+      'dist/src/index.js', 'record', '--no-redact', '--ledger', ledger, '--', process.execPath, '-e',
+      `process.${stream}.write('z'.repeat(${outputBytes}))`
+    ], { maxBuffer: OUTPUT_CAPTURE_LIMIT_BYTES * 2 });
+    const record = JSON.parse(await readFile(ledger, 'utf8')) as Record<typeof stream, string>;
+
+    assert.equal(Buffer.byteLength(result[stream]), outputBytes);
+    assert.equal(record[stream].slice(0, OUTPUT_CAPTURE_LIMIT_BYTES), 'z'.repeat(OUTPUT_CAPTURE_LIMIT_BYTES));
+    assert.match(record[stream], /\[runledger: truncated 23 bytes\]\n$/);
   });
 }
 
