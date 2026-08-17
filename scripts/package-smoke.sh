@@ -14,6 +14,15 @@ test -f examples/sample-runs.jsonl
 tarfile="$(npm pack --silent --pack-destination "$install_dir")"
 test -f "$install_dir/$tarfile"
 
+package_json="$(tar -xOf "$install_dir/$tarfile" package/package.json)"
+node -e '
+  const packageJson = JSON.parse(process.argv[1]);
+  if (packageJson.name !== "@rogerchappel/runledger") throw new Error(`unexpected package name: ${packageJson.name}`);
+  if (packageJson.repository?.url !== "git+https://github.com/rogerchappel/runledger.git") throw new Error("unexpected repository URL");
+  if (packageJson.bin?.runledger !== "./dist/src/index.js") throw new Error("runledger binary is missing or changed");
+' "$package_json"
+grep -Fq 'npm install --global @rogerchappel/runledger' README.md
+
 cd "$install_dir"
 npm init --yes >/dev/null
 npm install --ignore-scripts "./$tarfile"

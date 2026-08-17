@@ -1,5 +1,5 @@
 {
-  "name": "runledger",
+  "name": "@rogerchappel/runledger",
   "version": "0.1.0",
   "description": "Local-first tamper-evident command run ledger for developers and agents.",
   "type": "module",

@@ -15,9 +15,10 @@ node dist/src/index.js verify .runledger/runs.jsonl --fail-on changed
 ```
 
 RunLedger has not had its first npm release yet. Until the first tagged release,
-use the source-checkout commands above. Tagged releases publish the `runledger`
-package to npm; after publication, install it with `npm install --global
-runledger` and use `runledger` instead of `node dist/src/index.js`.
+use the source-checkout commands above. Tagged releases publish the
+`@rogerchappel/runledger` package to npm; after publication, install it with
+`npm install --global @rogerchappel/runledger` and use the preserved
+`runledger` binary instead of `node dist/src/index.js`.
 
 ## Commands
 
