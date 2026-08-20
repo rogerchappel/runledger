@@ -26,12 +26,12 @@ assert.match(npmPublish, /needs: verify/);
 assert.match(npmPublish, /contents: read[\s\S]*id-token: write/);
 assert.doesNotMatch(npmPublish, /contents: write|npm ci|npm pack|npm run build/);
 assert.match(npmPublish, /actions\/download-artifact@v4[\s\S]*name: verified-release/);
-assert.match(npmPublish, /npm publish \*\.tgz --provenance --access public/);
+assert.match(npmPublish, /npm publish \.\/\*\.tgz --provenance --access public/);
 
 assert.match(githubRelease, /needs: verify/);
 assert.match(githubRelease, /permissions:\n\s+contents: write/);
 assert.doesNotMatch(githubRelease, /id-token: write|npm ci|npm pack|npm run build/);
 assert.match(githubRelease, /actions\/download-artifact@v4[\s\S]*name: verified-release/);
-assert.match(githubRelease, /gh release create[\s\S]*RELEASE_NOTES\.md[\s\S]*\*\.tgz/);
+assert.match(githubRelease, /gh release create[\s\S]*RELEASE_NOTES\.md[\s\S]*\.\/\*\.tgz/);
 
 console.log("release workflow contract: ok");
