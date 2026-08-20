@@ -31,7 +31,8 @@
     "smoke": "bash scripts/smoke.sh",
     "prepack": "npm run build",
     "package:smoke": "bash scripts/package-smoke.sh",
-    "release:check": "npm test && npm run check && npm run build && npm run smoke && npm run package:smoke"
+    "release:workflow": "node scripts/release-workflow.test.mjs",
+    "release:check": "npm test && npm run check && npm run build && npm run smoke && npm run package:smoke && npm run release:workflow"
   },
   "keywords": [
     "cli",
