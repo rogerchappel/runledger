@@ -2,7 +2,7 @@
 import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { appendRecord, lastHash, parseLedger, summarize, writeOutput } from './ledger.js';
+import { commitRecord, lastHash, parseLedger, summarize, writeOutput } from './ledger.js';
 import { recordRun } from './record.js';
 import { renderJson, renderSummaryMarkdown, renderVerifyMarkdown } from './render.js';
 
@@ -91,7 +91,7 @@ async function main(argv: string[]): Promise<number> {
     const ledger = flag(parsed, 'ledger', '.runledger/runs.jsonl');
     const prevHash = await lastHash(ledger);
     const record = await recordRun({ command: parsed.command, cwd: process.cwd(), prevHash, redact: parsed.flags.get('redact') !== false });
-    await appendRecord(ledger, record);
+    await commitRecord(ledger, record);
     return record.exitCode ?? 1;
   }
   if (cmd === 'summarize') {

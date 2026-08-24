@@ -1,6 +1,6 @@
-import { mkdir, readFile, appendFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, appendFile, writeFile, rmdir } from 'node:fs/promises';
 import path from 'node:path';
-import { GENESIS_HASH, hashRecord, stableStringify } from './hash.js';
+import { GENESIS_HASH, hashRecord, stableStringify, withHash } from './hash.js';
 import type { RunRecord, Summary, VerifyIssue, VerifyResult } from './types.js';
 
 export async function readLedger(file: string): Promise<RunRecord[]> {
@@ -43,6 +43,40 @@ export function parseLedger(text: string): VerifyResult {
 export async function appendRecord(file: string, record: RunRecord): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
   await appendFile(file, `${stableStringify(record)}\n`, 'utf8');
+}
+
+const LOCK_RETRY_MS = 25;
+const LOCK_TIMEOUT_MS = 10_000;
+
+async function acquireLedgerLock(file: string): Promise<() => Promise<void>> {
+  const lock = `${file}.lock`;
+  await mkdir(path.dirname(file), { recursive: true });
+  const deadline = Date.now() + LOCK_TIMEOUT_MS;
+  while (true) {
+    try {
+      await mkdir(lock);
+      return async () => rmdir(lock);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      if (Date.now() >= deadline) {
+        throw new Error(`could not obtain ledger lock ${lock} within ${LOCK_TIMEOUT_MS}ms; verify no record process is active before removing it`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
+    }
+  }
+}
+
+export async function commitRecord(file: string, record: RunRecord): Promise<RunRecord> {
+  const release = await acquireLedgerLock(file);
+  try {
+    const prevHash = await lastHash(file);
+    const { hash: _staleHash, ...fields } = record;
+    const committed = withHash({ ...fields, prevHash });
+    await appendRecord(file, committed);
+    return committed;
+  } finally {
+    await release();
+  }
 }
 
 export async function lastHash(file: string): Promise<string> {
