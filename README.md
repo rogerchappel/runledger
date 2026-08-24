@@ -35,6 +35,14 @@ runledger record --ledger .runledger/runs.jsonl -- npm test
 ```
 
 Each record includes command, cwd, timestamps, duration, exit code, stdout/stderr, previous hash, and record hash.
+
+Writers to the same ledger are serialized with a sibling `<ledger>.lock`
+directory. A writer revalidates the complete chain while holding that lock before
+it chooses `prevHash` and appends, so overlapping `record` processes preserve
+every completed run in a valid chain. Lock acquisition times out after 10
+seconds without changing the ledger. If a process is killed while committing,
+verify that no `record` process still uses the ledger before manually removing
+the lock directory; the next record will revalidate the ledger before writing.
 RunLedger retains at most the first 1 MiB (1,048,576 bytes) of stdout and
 1 MiB of stderr in each record while continuing to drain both child streams.
 When a stream exceeds that limit, its stored text ends with
