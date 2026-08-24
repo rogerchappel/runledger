@@ -1,13 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, symlink, writeFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { OUTPUT_CAPTURE_LIMIT_BYTES } from '../src/record.js';
 
 const execFileAsync = promisify(execFile);
+
+async function waitForFiles(files: string[]): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (true) {
+    const ready = await Promise.all(files.map((file) => access(file).then(() => true, () => false)));
+    if (ready.every(Boolean)) return;
+    if (Date.now() >= deadline) throw new Error(`timed out waiting for ${files.join(', ')}`);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
 
 test('CLI renders examples', async () => {
   const { stdout } = await execFileAsync(process.execPath, ['dist/src/index.js', 'examples']);
@@ -267,6 +277,38 @@ test('CLI record refuses to run or append when the existing ledger is tampered',
 
   assert.deepEqual(await readFile(ledger), before);
   await assert.rejects(readFile(marker), { code: 'ENOENT' });
+});
+
+test('overlapping CLI record writers preserve every run in a valid chain', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-concurrent-'));
+  const ledger = path.join(directory, 'runs.jsonl');
+  const release = path.join(directory, 'release');
+  const ready = [path.join(directory, 'ready-1'), path.join(directory, 'ready-2')];
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  const writers = ready.map((marker, index) => execFileAsync(process.execPath, [
+    'dist/src/index.js',
+    'record',
+    '--ledger',
+    ledger,
+    '--',
+    process.execPath,
+    '-e',
+    `const fs=require('node:fs');fs.writeFileSync(${JSON.stringify(marker)},'ready');const timer=setInterval(()=>{if(fs.existsSync(${JSON.stringify(release)})){clearInterval(timer);process.exit(0)}},5);setTimeout(()=>process.exit(9),5000);console.log(${JSON.stringify(`writer-${index + 1}`)})`
+  ]));
+
+  await waitForFiles(ready);
+  await writeFile(release, 'release', 'utf8');
+  const results = await Promise.all(writers);
+  assert.deepEqual(results.map(() => 0), [0, 0]);
+
+  const verification = await execFileAsync(process.execPath, [
+    'dist/src/index.js', 'verify', ledger, '--format', 'json'
+  ]);
+  const parsed = JSON.parse(verification.stdout) as { ok: boolean; records: Array<{ stdout: string }> };
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.records.length, 2);
+  assert.deepEqual(parsed.records.map((record) => record.stdout.trim()).sort(), ['writer-1', 'writer-2']);
 });
 
 for (const stream of ['stdout', 'stderr'] as const) {
