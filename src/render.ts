@@ -1,9 +1,21 @@
 import type { Summary, VerifyResult } from './types.js';
 import { stableStringify } from './hash.js';
 
+function longestBacktickRun(text: string): number {
+  return Math.max(0, ...Array.from(text.matchAll(/`+/g), (match) => match[0].length));
+}
+
 function fence(text: string): string {
   const trimmed = text.trimEnd();
-  return trimmed.length === 0 ? '_empty_' : `\n\`\`\`text\n${trimmed}\n\`\`\``;
+  if (trimmed.length === 0) return '_empty_';
+  const delimiter = '`'.repeat(Math.max(3, longestBacktickRun(trimmed) + 1));
+  return `\n${delimiter}text\n${trimmed}\n${delimiter}`;
+}
+
+function inlineCode(text: string): string {
+  const delimiter = '`'.repeat(longestBacktickRun(text) + 1);
+  const padding = /^\s|\s$|^`|`$/.test(text) ? ' ' : '';
+  return `${delimiter}${padding}${text}${padding}${delimiter}`;
 }
 
 export function renderSummaryMarkdown(summary: Summary): string {
@@ -23,7 +35,7 @@ export function renderSummaryMarkdown(summary: Summary): string {
   for (const record of summary.records) {
     lines.push(`### ${record.id}`);
     lines.push('');
-    lines.push(`- Command: \`${record.command.join(' ')}\``);
+    lines.push(`- Command: ${inlineCode(record.command.join(' '))}`);
     lines.push(`- Status: ${record.status}`);
     lines.push(`- Exit code: ${record.exitCode ?? 'signal'}`);
     lines.push(`- Duration: ${record.durationMs}ms`);
