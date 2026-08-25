@@ -16,6 +16,26 @@ test('fixture ledger verifies and summarizes deterministically', async () => {
   assert.match(renderSummaryMarkdown(summary), /RunLedger Summary/);
 });
 
+test('Markdown summary safely delimits backticks in commands and captured streams', async () => {
+  const text = await readFile('examples/sample-runs.jsonl', 'utf8');
+  const result = parseLedger(text);
+  const record = {
+    ...result.records[0]!,
+    command: ['printf', '`argument`', '```'],
+    stdout: 'ordinary\n```text\ninside ``` output',
+    stderr: 'failure with ```` embedded'
+  };
+  const markdown = renderSummaryMarkdown(summarize([record], false));
+
+  assert.match(markdown, /- Command: ```` printf `argument` ``` ````/);
+  assert.match(markdown, /````text\nordinary\n```text\ninside ``` output\n````/);
+  assert.match(markdown, /`````text\nfailure with ```` embedded\n`````/);
+  assert.equal((markdown.match(/^````text$/gm) ?? []).length, 1);
+  assert.equal((markdown.match(/^````$/gm) ?? []).length, 1);
+  assert.equal((markdown.match(/^`````text$/gm) ?? []).length, 1);
+  assert.equal((markdown.match(/^`````$/gm) ?? []).length, 1);
+});
+
 test('tampering is detected', async () => {
   const text = await readFile('examples/sample-runs.jsonl', 'utf8');
   const tampered = text.replace('fixture ok', 'fixture changed');
