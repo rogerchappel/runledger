@@ -88,6 +88,9 @@ async function main(argv: string[]): Promise<number> {
   }
   validateOptions(parsed, cmd);
   if (cmd === 'record') {
+    if (parsed.positional.length > 1) {
+      throw new Error(`record: unexpected arguments before the '--' separator (${parsed.positional.slice(1).join(', ')}); the command must follow '--'`);
+    }
     const ledger = flag(parsed, 'ledger', '.runledger/runs.jsonl');
     const prevHash = await lastHash(ledger);
     const record = await recordRun({ command: parsed.command, cwd: process.cwd(), prevHash, redact: parsed.flags.get('redact') !== false });
