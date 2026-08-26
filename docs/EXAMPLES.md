@@ -2,6 +2,9 @@
 
 ## Record a test run
 
+The command must follow a literal `--` separator; arguments before it are
+rejected without running or writing.
+
 ```bash
 runledger record -- npm test
 ```
