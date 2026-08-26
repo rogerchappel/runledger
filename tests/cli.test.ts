@@ -536,3 +536,86 @@ for (const existingRecords of [0, 1]) {
     assert.equal(verified.records.length, existingRecords + 2);
   });
 }
+
+test('record with -- separator appends one record with the full command', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-record-ok-'));
+  const ledger = path.join(directory, 'runs.jsonl');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  await execFileAsync(process.execPath, [
+    'dist/src/index.js', 'record', '--ledger', ledger, '--', process.execPath, '-e', 'console.log(1)'
+  ]);
+  const record = JSON.parse(await readFile(ledger, 'utf8')) as { command: string[]; status: string };
+  assert.deepEqual(record.command, [process.execPath, '-e', 'console.log(1)']);
+  assert.equal(record.status, 'passed');
+});
+
+test('record with positional args before -- errors without running or writing', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-separator-'));
+  const ledger = path.join(directory, 'runs.jsonl');
+  const marker = path.join(directory, 'command-ran');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      'dist/src/index.js',
+      'record',
+      '--ledger',
+      ledger,
+      'node',
+      '-e',
+      'console.log(1)',
+      '--',
+      process.execPath,
+      '-e',
+      `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'ran')`
+    ]),
+    (error: Error & { code?: number; stderr?: string }) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr ?? '', /before the '--' separator/);
+      return true;
+    }
+  );
+
+  await assert.rejects(readFile(marker), { code: 'ENOENT' });
+  await assert.rejects(readFile(ledger), { code: 'ENOENT' });
+});
+
+test('verify exits 2 on an invalid ledger regardless of --fail-on mode', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-verify-invalid-'));
+  const ledger = path.join(directory, 'tampered.jsonl');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const lines = (await readFile('examples/sample-runs.jsonl', 'utf8')).trim().split('\n');
+  await writeFile(ledger, `${(lines[0] ?? '').replace('fixture ok', 'fixture changed')}\n`, 'utf8');
+
+  for (const mode of ['invalid', 'changed', 'failed'] as const) {
+    await assert.rejects(
+      execFileAsync(process.execPath, ['dist/src/index.js', 'verify', ledger, '--fail-on', mode]),
+      (error: Error & { code?: number; stderr?: string }) => {
+        assert.equal(error.code, 2, `--fail-on ${mode} should exit 2 on an invalid ledger`);
+        return true;
+      }
+    );
+  }
+});
+
+test('verify --fail-on failed exits 3 when a valid ledger has failed commands', async () => {
+  await assert.rejects(
+    execFileAsync(process.execPath, ['dist/src/index.js', 'verify', 'examples/sample-runs.jsonl', '--fail-on', 'failed']),
+    (error: Error & { code?: number; stderr?: string }) => {
+      assert.equal(error.code, 3);
+      return true;
+    }
+  );
+});
+
+test('verify exits 0 on a valid ledger without failed commands', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'runledger-verify-ok-'));
+  const ledger = path.join(directory, 'runs.jsonl');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await execFileAsync(process.execPath, [
+    'dist/src/index.js', 'record', '--ledger', ledger, '--', process.execPath, '-e', 'console.log(1)'
+  ]);
+  const { stdout } = await execFileAsync(process.execPath, ['dist/src/index.js', 'verify', ledger, '--fail-on', 'failed']);
+  assert.match(stdout, /RunLedger Verification/);
+});
