@@ -16,7 +16,7 @@ const valueOptions = new Set(['ledger', 'out', 'format', 'fail-on']);
 const booleanOptions = new Set(['redact', 'help', 'examples']);
 
 function usage(): string {
-  return `RunLedger — local-first command evidence\n\nUsage:\n  runledger record [--ledger .runledger/runs.jsonl] [--no-redact] -- <command> [args...]\n  runledger summarize <ledger> [--format markdown|json] [--out file]\n  runledger verify <ledger> [--format markdown|json] [--fail-on changed|failed|invalid]\n\nExamples:\n  runledger record -- npm test\n  runledger summarize .runledger/runs.jsonl --out REPORT.md\n  runledger verify .runledger/runs.jsonl --fail-on changed\n`;
+  return `RunLedger — local-first command evidence\n\nUsage:\n  runledger record [--ledger .runledger/runs.jsonl] [--no-redact] -- <command> [args...]\n  runledger summarize <ledger> [--format markdown|json] [--out file]\n  runledger verify <ledger> [--format markdown|json] [--fail-on changed|failed|invalid]\n\nrecord requires a literal '--' before the command; other arguments before it are\nrejected without running or writing. verify exits 2 on any invalid ledger and,\nunder --fail-on failed, exits 3 when a recorded command failed.\n\nExamples:\n  runledger record -- npm test\n  runledger summarize .runledger/runs.jsonl --out REPORT.md\n  runledger verify .runledger/runs.jsonl --fail-on changed\n`;
 }
 
 function parse(argv: string[]): Parsed {

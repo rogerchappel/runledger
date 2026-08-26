@@ -28,7 +28,9 @@ command runs or writes output.
 
 ### `record`
 
-Runs a command and appends one JSONL record.
+Runs a command and appends one JSONL record. The command must follow a literal
+`--` separator; any non-flag arguments before `--` are rejected (exit 1)
+before anything runs or is written.
 
 ```bash
 runledger record --ledger .runledger/runs.jsonl -- npm test
@@ -86,7 +88,11 @@ runledger --examples
 
 ### `verify`
 
-Recomputes the hash chain and reports tampering or malformed records.
+Recomputes the hash chain and reports tampering or malformed records. Exit
+codes: `0` when the ledger is valid; `2` when the ledger is invalid (malformed
+JSON, invalid schema, broken hash link, or hash mismatch), regardless of
+`--fail-on` mode; `3` under `--fail-on failed` when the ledger is valid but a
+recorded command failed.
 
 ```bash
 runledger verify examples/sample-runs.jsonl
