@@ -119,8 +119,7 @@ async function main(argv: string[]): Promise<number> {
     const content = format === 'json' ? renderJson(result) : renderVerifyMarkdown(result);
     await writeOutput(typeof parsed.flags.get('out') === 'string' ? parsed.flags.get('out') as string : undefined, content);
     const failOn = enumFlag(parsed, 'fail-on', ['changed', 'failed', 'invalid'], 'invalid');
-    if (failOn === 'changed' && !result.ok) return 2;
-    if (failOn === 'invalid' && !result.ok) return 2;
+    if (!result.ok) return 2;
     if (failOn === 'failed' && result.records.some((record) => record.status === 'failed')) return 3;
     return 0;
   }
