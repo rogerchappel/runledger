@@ -180,7 +180,7 @@ test('CLI rejects options that belong to a different command', async () => {
 for (const [command, flag, value, allowed] of [
   ['summarize', '--format', 'yaml', 'markdown, json'],
   ['verify', '--format', 'yaml', 'markdown, json'],
-  ['verify', '--fail-on', 'typo', 'changed, failed, invalid']
+  ['verify', '--fail-on', 'typo', 'failed, invalid']
 ] as const) {
   test(`CLI rejects unsupported ${flag} values for ${command}`, async () => {
     await assert.rejects(
@@ -210,7 +210,7 @@ test('CLI cannot accept an invalid ledger when --fail-on is misspelled', async (
     execFileAsync(process.execPath, ['dist/src/index.js', 'verify', ledger, '--fail-on', 'typo']),
     (error: Error & { code?: number; stderr?: string }) => {
       assert.equal(error.code, 1);
-      assert.match(error.stderr ?? '', /--fail-on must be one of: changed, failed, invalid/);
+      assert.match(error.stderr ?? '', /--fail-on must be one of: failed, invalid/);
       return true;
     }
   );
@@ -581,14 +581,25 @@ test('record with positional args before -- errors without running or writing', 
   await assert.rejects(readFile(ledger), { code: 'ENOENT' });
 });
 
-test('verify exits 2 on an invalid ledger regardless of --fail-on mode', async (t) => {
+test('verify rejects the behaviorless changed threshold', async () => {
+  await assert.rejects(
+    execFileAsync(process.execPath, ['dist/src/index.js', 'verify', 'examples/sample-runs.jsonl', '--fail-on', 'changed']),
+    (error: Error & { code?: number; stderr?: string }) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr ?? '', /--fail-on must be one of: failed, invalid/);
+      return true;
+    }
+  );
+});
+
+test('verify exits 2 on an invalid ledger regardless of supported --fail-on mode', async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), 'runledger-verify-invalid-'));
   const ledger = path.join(directory, 'tampered.jsonl');
   t.after(() => rm(directory, { recursive: true, force: true }));
   const lines = (await readFile('examples/sample-runs.jsonl', 'utf8')).trim().split('\n');
   await writeFile(ledger, `${(lines[0] ?? '').replace('fixture ok', 'fixture changed')}\n`, 'utf8');
 
-  for (const mode of ['invalid', 'changed', 'failed'] as const) {
+  for (const mode of ['invalid', 'failed'] as const) {
     await assert.rejects(
       execFileAsync(process.execPath, ['dist/src/index.js', 'verify', ledger, '--fail-on', mode]),
       (error: Error & { code?: number; stderr?: string }) => {
