@@ -24,7 +24,7 @@ runledger summarize evidence/local.jsonl --out RUNLEDGER.md
 ## Fail a local gate on tampering
 
 ```bash
-runledger verify evidence/local.jsonl --fail-on changed
+runledger verify evidence/local.jsonl --fail-on invalid
 ```
 
 ## Inspect the checked-in fixture

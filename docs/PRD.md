@@ -39,7 +39,7 @@ Modern agent-assisted development produces lots of local evidence: commands, fix
 ## V1 CLI
 
 ```bash
-runledger record -- npm test\nrunledger summarize .runledger/runs.jsonl --out REPORT.md\nrunledger verify .runledger/runs.jsonl --fail-on changed
+runledger record -- npm test\nrunledger summarize .runledger/runs.jsonl --out REPORT.md\nrunledger verify .runledger/runs.jsonl --fail-on invalid
 ```
 
 ## Functional requirements

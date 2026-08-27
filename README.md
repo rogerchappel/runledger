@@ -11,7 +11,7 @@ npm install
 npm run build
 node dist/src/index.js record -- npm test
 node dist/src/index.js summarize .runledger/runs.jsonl --out REPORT.md
-node dist/src/index.js verify .runledger/runs.jsonl --fail-on changed
+node dist/src/index.js verify .runledger/runs.jsonl --fail-on invalid
 ```
 
 RunLedger has not had its first npm release yet. Until the first tagged release,
