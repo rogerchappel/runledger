@@ -381,6 +381,32 @@ test('CLI stores output at the capture boundary without a truncation marker', as
 });
 
 for (const stream of ['stdout', 'stderr'] as const) {
+  test(`CLI preserves UTF-8 when the ${stream} capture boundary splits a character`, async (t) => {
+    const directory = await mkdtemp(path.join(tmpdir(), `runledger-utf8-${stream}-`));
+    const ledger = path.join(directory, 'runs.jsonl');
+    t.after(() => rm(directory, { recursive: true, force: true }));
+
+    const result = await execFileAsync(process.execPath, [
+      'dist/src/index.js', 'record', '--ledger', ledger, '--', process.execPath, '-e',
+      `process.${stream}.write('a'.repeat(${OUTPUT_CAPTURE_LIMIT_BYTES - 1}) + '😀')`
+    ], { maxBuffer: OUTPUT_CAPTURE_LIMIT_BYTES * 2 });
+    const record = JSON.parse(await readFile(ledger, 'utf8')) as Record<typeof stream, string>;
+
+    assert.equal(result[stream], record[stream]);
+    assert.equal(record[stream].slice(0, OUTPUT_CAPTURE_LIMIT_BYTES - 1), 'a'.repeat(OUTPUT_CAPTURE_LIMIT_BYTES - 1));
+    assert.match(record[stream], /\[runledger: truncated 4 bytes\]\n$/);
+    assert.doesNotMatch(record[stream], /\uFFFD/);
+
+    const verify = await execFileAsync(
+      process.execPath,
+      ['dist/src/index.js', 'verify', ledger, '--format', 'json'],
+      { maxBuffer: OUTPUT_CAPTURE_LIMIT_BYTES * 2 }
+    );
+    assert.equal((JSON.parse(verify.stdout) as { ok: boolean }).ok, true);
+  });
+}
+
+for (const stream of ['stdout', 'stderr'] as const) {
   test(`CLI bounds large ${stream}, redacts retained text, and keeps the ledger appendable`, async (t) => {
     const directory = await mkdtemp(path.join(tmpdir(), `runledger-large-${stream}-`));
     const ledger = path.join(directory, 'runs.jsonl');
