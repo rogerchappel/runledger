@@ -6,6 +6,22 @@ import type { RunRecord } from './types.js';
 
 export const OUTPUT_CAPTURE_LIMIT_BYTES = 1024 * 1024;
 
+function completeUtf8PrefixLength(buffer: Buffer): number {
+  if (buffer.length === 0) return 0;
+  let leadIndex = buffer.length - 1;
+  while (leadIndex >= 0 && (buffer[leadIndex]! & 0xc0) === 0x80) leadIndex -= 1;
+  if (leadIndex < 0) return buffer.length;
+
+  const lead = buffer[leadIndex]!;
+  const expectedBytes =
+    (lead & 0x80) === 0 ? 1
+      : (lead & 0xe0) === 0xc0 ? 2
+        : (lead & 0xf0) === 0xe0 ? 3
+          : (lead & 0xf8) === 0xf0 ? 4
+            : 1;
+  return buffer.length - leadIndex < expectedBytes ? leadIndex : buffer.length;
+}
+
 class BoundedCapture {
   private readonly chunks: Buffer[] = [];
   private retainedBytes = 0;
@@ -23,8 +39,10 @@ class BoundedCapture {
   }
 
   text(): string {
-    const retained = Buffer.concat(this.chunks).toString('utf8');
-    const omittedBytes = this.totalBytes - this.retainedBytes;
+    const captured = Buffer.concat(this.chunks);
+    const completeBytes = completeUtf8PrefixLength(captured);
+    const retained = captured.subarray(0, completeBytes).toString('utf8');
+    const omittedBytes = this.totalBytes - completeBytes;
     return omittedBytes === 0
       ? retained
       : `${retained}\n[runledger: truncated ${omittedBytes} bytes]\n`;
