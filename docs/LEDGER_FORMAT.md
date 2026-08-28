@@ -18,9 +18,12 @@ does not alter child-process completion, exit code, or signal handling.
 
 If bytes are omitted, the retained string ends with a newline and a marker of
 the form `[runledger: truncated N bytes]`, followed by a newline. `N` is the
-exact number of bytes received beyond the limit. The marker is part of the
-hashed record. Capture is bounded before optional secret redaction; redaction
-still applies to all retained text. With `--no-redact`, the complete raw stream
-is forwarded live to the terminal while only its bounded copy is recorded.
+exact number of received bytes omitted from the retained prefix. The marker is part of the
+hashed record. When the limit splits a multibyte UTF-8 character, the retained
+prefix backs up to the previous complete character and `N` includes every byte
+of the omitted partial character. Capture is bounded before optional secret
+redaction; redaction still applies to all retained text. With `--no-redact`,
+the complete raw stream is forwarded live to the terminal while only its
+bounded copy is recorded.
 
 A verifier should reject malformed JSON, non-`runledger.v1` records, previous-hash mismatches, and hash mismatches.

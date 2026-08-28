@@ -49,8 +49,10 @@ RunLedger retains at most the first 1 MiB (1,048,576 bytes) of stdout and
 1 MiB of stderr in each record while continuing to drain both child streams.
 When a stream exceeds that limit, its stored text ends with
 `[runledger: truncated N bytes]`, where `N` is the exact number of omitted
-bytes. Truncation is applied before redaction, so secrets in retained text are
-still redacted and the marker is deterministic.
+bytes. If the byte boundary intersects a multibyte UTF-8 character, that whole
+character is omitted and included in `N`, so stored output remains valid UTF-8.
+Truncation is applied before redaction, so secrets in retained text are still
+redacted and the marker is deterministic.
 If the operating system cannot launch the command (for example, because the
 executable does not exist), `record` still appends a failed record with exit
 code 1 and a diagnostic in stderr. The attempted command remains part of the
