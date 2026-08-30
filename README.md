@@ -96,6 +96,14 @@ JSON, invalid schema, broken hash link, or hash mismatch), regardless of
 `--fail-on` mode; `3` under `--fail-on failed` when the ledger is valid but a
 recorded command failed.
 
+Schema verification requires every `runledger.v1` field produced by `record`:
+a non-empty command and working directory, valid ordered timestamps, a finite
+non-negative duration, a consistent exit-code/signal/status result, captured
+stdout and stderr strings, the redaction boolean, and 64-character lowercase
+hexadecimal chain hashes. Schema issues report the physical JSONL line number;
+hash-link and content-hash diagnostics are still reported when those fields can
+be checked.
+
 ```bash
 runledger verify examples/sample-runs.jsonl
 runledger verify .runledger/runs.jsonl --fail-on invalid
