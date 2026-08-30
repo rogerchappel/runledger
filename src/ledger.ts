@@ -3,6 +3,63 @@ import path from 'node:path';
 import { GENESIS_HASH, hashRecord, stableStringify, withHash } from './hash.js';
 import type { RunRecord, Summary, VerifyIssue, VerifyResult } from './types.js';
 
+const HASH_PATTERN = /^[0-9a-f]{64}$/;
+const SIGNALS = new Set([
+  'SIGABRT', 'SIGALRM', 'SIGBUS', 'SIGCHLD', 'SIGCONT', 'SIGFPE', 'SIGHUP',
+  'SIGILL', 'SIGINT', 'SIGIO', 'SIGIOT', 'SIGKILL', 'SIGPIPE', 'SIGPOLL',
+  'SIGPROF', 'SIGPWR', 'SIGQUIT', 'SIGSEGV', 'SIGSTKFLT', 'SIGSTOP', 'SIGSYS',
+  'SIGTERM', 'SIGTRAP', 'SIGTSTP', 'SIGTTIN', 'SIGTTOU', 'SIGURG', 'SIGUSR1',
+  'SIGUSR2', 'SIGVTALRM', 'SIGWINCH', 'SIGXCPU', 'SIGXFSZ'
+]);
+
+function recordSchemaErrors(value: unknown): string[] {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return ['record must be a JSON object'];
+  }
+  const record = value as Record<string, unknown>;
+  const errors: string[] = [];
+  if (record.schema !== 'runledger.v1') errors.push('schema must be "runledger.v1"');
+  if (typeof record.id !== 'string' || record.id.length === 0) errors.push('id must be a non-empty string');
+  if (!Array.isArray(record.command) || record.command.length === 0 || record.command.some((part) => typeof part !== 'string' || part.length === 0)) {
+    errors.push('command must be a non-empty array of non-empty strings');
+  }
+  if (typeof record.cwd !== 'string' || record.cwd.length === 0) errors.push('cwd must be a non-empty string');
+
+  const started = typeof record.startedAt === 'string' ? Date.parse(record.startedAt) : Number.NaN;
+  const finished = typeof record.finishedAt === 'string' ? Date.parse(record.finishedAt) : Number.NaN;
+  if (!Number.isFinite(started)) errors.push('startedAt must be a valid timestamp string');
+  if (!Number.isFinite(finished)) errors.push('finishedAt must be a valid timestamp string');
+  if (Number.isFinite(started) && Number.isFinite(finished) && finished < started) errors.push('finishedAt must not precede startedAt');
+  if (typeof record.durationMs !== 'number' || !Number.isFinite(record.durationMs) || record.durationMs < 0) {
+    errors.push('durationMs must be a finite non-negative number');
+  }
+
+  const validExitCode = record.exitCode === null
+    || (typeof record.exitCode === 'number' && Number.isInteger(record.exitCode) && record.exitCode >= 0);
+  if (!validExitCode) errors.push('exitCode must be null or a non-negative integer');
+  if (record.signal !== null && (typeof record.signal !== 'string' || !SIGNALS.has(record.signal))) {
+    errors.push('signal must be null or a recognized signal name');
+  }
+  if (validExitCode && (record.signal === null || (typeof record.signal === 'string' && SIGNALS.has(record.signal)))) {
+    if ((record.exitCode === null) === (record.signal === null)) {
+      errors.push('exactly one of exitCode and signal must be non-null');
+    }
+  }
+  if (record.status !== 'passed' && record.status !== 'failed') errors.push('status must be "passed" or "failed"');
+  if (record.status === 'passed' && (record.exitCode !== 0 || record.signal !== null)) {
+    errors.push('status "passed" requires exitCode 0 and signal null');
+  }
+  if (record.status === 'failed' && record.exitCode === 0 && record.signal === null) {
+    errors.push('status "failed" requires a non-zero/null exitCode or signal');
+  }
+  if (typeof record.stdout !== 'string') errors.push('stdout must be a string');
+  if (typeof record.stderr !== 'string') errors.push('stderr must be a string');
+  if (typeof record.redacted !== 'boolean') errors.push('redacted must be a boolean');
+  if (typeof record.prevHash !== 'string' || !HASH_PATTERN.test(record.prevHash)) errors.push('prevHash must be a 64-character lowercase hexadecimal string');
+  if (typeof record.hash !== 'string' || !HASH_PATTERN.test(record.hash)) errors.push('hash must be a 64-character lowercase hexadecimal string');
+  return errors;
+}
+
 export async function readLedger(file: string): Promise<RunRecord[]> {
   const text = await readFile(file, 'utf8');
   return parseLedger(text).records;
@@ -16,17 +73,24 @@ export function parseLedger(text: string): VerifyResult {
   lines.forEach((line, index) => {
     const lineNo = index + 1;
     if (line.trim().length === 0) return;
-    let record: RunRecord;
+    let parsed: unknown;
     try {
-      record = JSON.parse(line) as RunRecord;
+      parsed = JSON.parse(line) as unknown;
     } catch (error) {
       issues.push({ line: lineNo, kind: 'parse-error', message: String(error) });
       return;
     }
-    if (record.schema !== 'runledger.v1' || typeof record.hash !== 'string' || typeof record.prevHash !== 'string') {
-      issues.push({ line: lineNo, kind: 'schema-error', message: 'record is not a runledger.v1 record' });
+    const schemaErrors = recordSchemaErrors(parsed);
+    const candidate = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : undefined;
+    if (schemaErrors.length > 0) {
+      issues.push({ line: lineNo, kind: 'schema-error', message: schemaErrors.join('; ') });
+    }
+    if (!candidate || typeof candidate.hash !== 'string' || typeof candidate.prevHash !== 'string') {
       return;
     }
+    const record = candidate as unknown as RunRecord;
     if (record.prevHash !== expectedPrev) {
       issues.push({ line: lineNo, kind: 'prev-hash-mismatch', message: `expected ${expectedPrev}, got ${record.prevHash}` });
     }
@@ -35,7 +99,7 @@ export function parseLedger(text: string): VerifyResult {
       issues.push({ line: lineNo, kind: 'hash-mismatch', message: `expected ${actual}, got ${record.hash}` });
     }
     expectedPrev = record.hash;
-    records.push(record);
+    if (schemaErrors.length === 0) records.push(record);
   });
   return { ok: issues.length === 0, records, issues };
 }
