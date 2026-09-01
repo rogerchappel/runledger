@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const workflow = await readFile(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
+const ciWorkflow = await readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+const dryRunWorkflow = await readFile(
+  new URL("../.github/workflows/release-dry-run.yml", import.meta.url),
+  "utf8",
+);
 
 function job(name, nextName) {
   const start = workflow.indexOf(`  ${name}:`);
@@ -33,5 +38,11 @@ assert.match(githubRelease, /permissions:\n\s+contents: write/);
 assert.doesNotMatch(githubRelease, /id-token: write|npm ci|npm pack|npm run build/);
 assert.match(githubRelease, /actions\/download-artifact@v4[\s\S]*name: verified-release/);
 assert.match(githubRelease, /gh release create[\s\S]*RELEASE_NOTES\.md[\s\S]*\.\/\*\.tgz/);
+
+assert.match(ciWorkflow, /npm run package:smoke --if-present[\s\S]*npm run release:workflow --if-present/);
+
+assert.match(dryRunWorkflow, /paths:[\s\S]*scripts\/package-smoke\.sh/);
+assert.match(dryRunWorkflow, /paths:[\s\S]*scripts\/release-workflow\.test\.mjs/);
+assert.match(dryRunWorkflow, /npm run release:check/);
 
 console.log("release workflow contract: ok");
