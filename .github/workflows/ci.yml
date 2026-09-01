@@ -70,3 +70,4 @@ jobs:
           npm run build --if-present
           npm run smoke --if-present
           npm run package:smoke --if-present
+          npm run release:workflow --if-present
