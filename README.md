@@ -78,6 +78,8 @@ invalid record schema, a broken previous-hash link, or a record-hash mismatch,
 it still writes the useful partial summary (with `changed` set to `true`),
 reports every concrete issue on stderr, and exits `2`. When `--out` is used,
 the partial summary is written there while diagnostics remain on stderr.
+The accepted form is exactly one ledger path followed by options; unexpected
+positional arguments are rejected with exit code `1`.
 
 ### `examples`
 
@@ -109,6 +111,9 @@ runledger verify examples/sample-runs.jsonl
 runledger verify .runledger/runs.jsonl --fail-on invalid
 runledger verify .runledger/runs.jsonl --fail-on failed
 ```
+
+The accepted form is exactly one ledger path followed by options; unexpected
+positional arguments are rejected with exit code `1`.
 
 ## Safety model
 
