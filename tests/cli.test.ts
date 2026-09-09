@@ -42,6 +42,27 @@ test('CLI verify renders JSON for fixture', async () => {
   assert.equal(parsed.records.length, 2);
 });
 
+for (const command of ['summarize', 'verify'] as const) {
+  for (const unexpected of [['extra'], ['extra', 'another']] as const) {
+    test(`CLI ${command} rejects ${unexpected.length} unexpected positional argument${unexpected.length === 1 ? '' : 's'}`, async () => {
+      await assert.rejects(
+        execFileAsync(process.execPath, [
+          'dist/src/index.js',
+          command,
+          'examples/sample-runs.jsonl',
+          ...unexpected
+        ]),
+        (error: Error & { code?: number; stdout?: string; stderr?: string }) => {
+          assert.equal(error.code, 1);
+          assert.equal(error.stdout, '');
+          assert.match(error.stderr ?? '', new RegExp(`^${command}: unexpected positional argument${unexpected.length === 1 ? '' : 's'} \\(${unexpected.join(', ')}\\); accepted form: runledger ${command} <ledger> \\[options\\]`));
+          return true;
+        }
+      );
+    });
+  }
+}
+
 for (const format of ['markdown', 'json'] as const) {
   test(`CLI summarize renders valid ${format} deterministically`, async () => {
     const args = ['dist/src/index.js', 'summarize', 'examples/sample-runs.jsonl', '--format', format];
