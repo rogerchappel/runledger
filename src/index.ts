@@ -61,6 +61,14 @@ function validateOptions(parsed: Parsed, command: string): void {
   }
 }
 
+function validateLedgerPositionals(parsed: Parsed, command: 'summarize' | 'verify'): void {
+  const unexpected = parsed.positional.slice(2);
+  if (unexpected.length > 0) {
+    const label = unexpected.length === 1 ? 'argument' : 'arguments';
+    throw new Error(`${command}: unexpected positional ${label} (${unexpected.join(', ')}); accepted form: runledger ${command} <ledger> [options]`);
+  }
+}
+
 function flag(parsed: Parsed, name: string, fallback: string): string {
   const value = parsed.flags.get(name);
   return typeof value === 'string' ? value : fallback;
@@ -99,6 +107,7 @@ async function main(argv: string[]): Promise<number> {
   }
   if (cmd === 'summarize') {
     if (!ledgerArg) throw new Error('summarize requires a ledger path');
+    validateLedgerPositionals(parsed, 'summarize');
     const result = parseLedger(await readFile(ledgerArg, 'utf8'));
     const summary = summarize(result.records, !result.ok);
     const format = enumFlag(parsed, 'format', ['markdown', 'json'], 'markdown');
@@ -114,6 +123,7 @@ async function main(argv: string[]): Promise<number> {
   }
   if (cmd === 'verify') {
     if (!ledgerArg) throw new Error('verify requires a ledger path');
+    validateLedgerPositionals(parsed, 'verify');
     const result = parseLedger(await readFile(ledgerArg, 'utf8'));
     const format = enumFlag(parsed, 'format', ['markdown', 'json'], 'markdown');
     const content = format === 'json' ? renderJson(result) : renderVerifyMarkdown(result);
