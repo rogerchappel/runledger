@@ -68,6 +68,15 @@ jobs:
           npm test --if-present
           npm run typecheck --if-present
           npm run build --if-present
+
+          if node -e 'process.exit(require("./package.json").bin?.runledger ? 0 : 1)'; then
+            bin_target="$(node -e 'process.stdout.write(require("./package.json").bin.runledger)')"
+            if [ ! -f "$bin_target" ]; then
+              echo "Declared package binary target is missing: $bin_target"
+              exit 1
+            fi
+          fi
+
           npm run smoke --if-present
           npm run package:smoke --if-present
           npm run release:workflow --if-present
