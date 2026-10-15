@@ -73,11 +73,7 @@ jobs:
             npm install
           fi
 
-          npm run lint --if-present
-          npm run check --if-present
-          npm test --if-present
-          npm run typecheck --if-present
-          npm run build --if-present
+          npm run release:check
 
           if node -e 'process.exit(require("./package.json").bin?.runledger ? 0 : 1)'; then
             bin_target="$(node -e 'process.stdout.write(require("./package.json").bin.runledger)')"
@@ -86,7 +82,3 @@ jobs:
               exit 1
             fi
           fi
-
-          npm run smoke --if-present
-          npm run package:smoke --if-present
-          npm run release:workflow --if-present
