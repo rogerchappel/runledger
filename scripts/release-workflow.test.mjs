@@ -39,7 +39,8 @@ assert.doesNotMatch(githubRelease, /id-token: write|npm ci|npm pack|npm run buil
 assert.match(githubRelease, /actions\/download-artifact@v4[\s\S]*name: verified-release/);
 assert.match(githubRelease, /gh release create[\s\S]*RELEASE_NOTES\.md[\s\S]*\.\/\*\.tgz/);
 
-assert.match(ciWorkflow, /npm run package:smoke --if-present[\s\S]*npm run release:workflow --if-present/);
+assert.match(ciWorkflow, /npm run release:check/);
+assert.doesNotMatch(ciWorkflow, /npm run (?:lint|check|test|typecheck|build|smoke|package:smoke|release:workflow) --if-present/);
 
 assert.match(dryRunWorkflow, /paths:[\s\S]*scripts\/package-smoke\.sh/);
 assert.match(dryRunWorkflow, /paths:[\s\S]*scripts\/release-workflow\.test\.mjs/);
