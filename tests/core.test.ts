@@ -90,6 +90,7 @@ test('verification enforces record field types and domain consistency', () => {
   const cases: Array<[string, Record<string, unknown>, RegExp]> = [
     ['command shape', { command: [] }, /command/],
     ['duration domain', { durationMs: Number.NaN }, /durationMs/],
+    ['fractional duration', { durationMs: 1.5 }, /durationMs/],
     ['timestamp ordering', { finishedAt: '2025-12-31T23:59:59.000Z' }, /finishedAt/],
     ['passed exit consistency', { exitCode: 1, status: 'passed' }, /status/],
     ['failed exit consistency', { exitCode: 0, status: 'failed' }, /status/],
@@ -110,6 +111,8 @@ test('verification enforces record field types and domain consistency', () => {
 
 test('schema validation retains hash-chain diagnostics and accepts complete records', () => {
   const first = validRecord();
+  const fractionalDuration = validRecord({ durationMs: 1.5 });
+  assert.equal(parseLedger(JSON.stringify(fractionalDuration)).ok, false);
   const second = validRecord({ id: 'second-record', prevHash: first.hash, stdout: 'changed' });
   const valid = parseLedger(`${JSON.stringify(first)}\n${JSON.stringify(second)}\n`);
   assert.equal(valid.ok, true);

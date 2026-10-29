@@ -99,8 +99,7 @@ JSON, invalid schema, broken hash link, or hash mismatch), regardless of
 recorded command failed.
 
 Schema verification requires every `runledger.v1` field produced by `record`:
-a non-empty command and working directory, valid ordered timestamps, a finite
-non-negative duration, a consistent exit-code/signal/status result, captured
+a non-empty command and working directory, valid ordered timestamps, a non-negative integer duration in milliseconds, a consistent exit-code/signal/status result, captured
 stdout and stderr strings, the redaction boolean, and 64-character lowercase
 hexadecimal chain hashes. Schema issues report the physical JSONL line number;
 hash-link and content-hash diagnostics are still reported when those fields can

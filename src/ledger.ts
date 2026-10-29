@@ -30,8 +30,8 @@ function recordSchemaErrors(value: unknown): string[] {
   if (!Number.isFinite(started)) errors.push('startedAt must be a valid timestamp string');
   if (!Number.isFinite(finished)) errors.push('finishedAt must be a valid timestamp string');
   if (Number.isFinite(started) && Number.isFinite(finished) && finished < started) errors.push('finishedAt must not precede startedAt');
-  if (typeof record.durationMs !== 'number' || !Number.isFinite(record.durationMs) || record.durationMs < 0) {
-    errors.push('durationMs must be a finite non-negative number');
+  if (typeof record.durationMs !== 'number' || !Number.isInteger(record.durationMs) || record.durationMs < 0) {
+    errors.push('durationMs must be a non-negative integer');
   }
 
   const validExitCode = record.exitCode === null
