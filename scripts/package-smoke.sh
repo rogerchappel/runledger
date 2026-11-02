@@ -26,6 +26,12 @@ grep -Fq 'npm install --global @rogerchappel/runledger' README.md
 cd "$install_dir"
 npm init --yes >/dev/null
 npm install --ignore-scripts "./$tarfile"
-./node_modules/.bin/runledger --help | grep -q 'RunLedger'
+cli="./node_modules/.bin/runledger"
+$cli --help | grep -q 'RunLedger'
+
+# Exercise a real command through the installed package entry point, not just --help.
+ledger_file="$install_dir/packed-cli-ledger.jsonl"
+$cli record --ledger "$ledger_file" -- sh -c 'exit 0'
+$cli verify "$ledger_file" | grep -q -- '- Valid: yes'
 
 echo "runledger package smoke passed: $tarfile"
