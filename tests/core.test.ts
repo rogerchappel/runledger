@@ -130,3 +130,16 @@ test('redacts common secret shapes', () => {
   assert.equal(redacted.includes('hunter2'), false);
   assert.match(redacted, /\[REDACTED\]/);
 });
+
+test('verification accepts zero and positive integer durations only', () => {
+  for (const durationMs of [0, 1, 42]) {
+    assert.equal(parseLedger(JSON.stringify(validRecord({ durationMs }))).ok, true, `${durationMs}ms`);
+  }
+
+  for (const durationMs of [-1, -0.5, 0.5, 1.25]) {
+    const result = parseLedger(JSON.stringify(validRecord({ durationMs })));
+    assert.equal(result.ok, false, `${durationMs}ms`);
+    assert.equal(result.issues[0]?.kind, 'schema-error', `${durationMs}ms`);
+    assert.match(result.issues[0]?.message ?? '', /durationMs must be a non-negative integer/);
+  }
+});
