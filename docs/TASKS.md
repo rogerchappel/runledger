@@ -18,4 +18,4 @@
 - [ ] Add shell completion generation.
 - [ ] Support configurable redaction patterns from an explicit local config file.
 - [ ] Add optional diff/file artifact references without storing full file content.
-- [ ] Publish an npm package once release policy is approved.
+- [ ] Approve the release policy, publish the first npm version, then enable the versioned npm install instructions in README.md. Until then, keep npm installation explicitly conditional.

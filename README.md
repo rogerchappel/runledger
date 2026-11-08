@@ -14,11 +14,18 @@ node dist/src/index.js summarize .runledger/runs.jsonl --out REPORT.md
 node dist/src/index.js verify .runledger/runs.jsonl --fail-on invalid
 ```
 
-RunLedger has not had its first npm release yet. Until the first tagged release,
-use the source-checkout commands above. Tagged releases publish the
-`@rogerchappel/runledger` package to npm; after publication, install it with
-`npm install --global @rogerchappel/runledger` and use the preserved
-`runledger` binary instead of `node dist/src/index.js`.
+RunLedger has not had its first npm release yet, so the npm package is not
+available to install. Until release policy is approved and a versioned release
+is published, clone the repository and use the source-checkout commands above.
+The package name and future global install command are shown here for reference
+only; do not use `npm install --global @rogerchappel/runledger` before
+publication. After a release is available, check the versioned package page and
+install the published version with:
+
+```bash
+npm install --global @rogerchappel/runledger@<published-version>
+runledger --help
+```
 
 ## Commands
 
