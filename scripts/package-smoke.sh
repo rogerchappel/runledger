@@ -21,6 +21,8 @@ node -e '
   if (packageJson.repository?.url !== "git+https://github.com/rogerchappel/runledger.git") throw new Error("unexpected repository URL");
   if (packageJson.bin?.runledger !== "./dist/src/index.js") throw new Error("runledger binary is missing or changed");
 ' "$package_json"
+grep -Fq 'npm install --global @rogerchappel/runledger@<published-version>' README.md
+grep -Fq 'do not use `npm install --global @rogerchappel/runledger` before' README.md
 grep -Fq 'npm install --global @rogerchappel/runledger' README.md
 
 cd "$install_dir"
