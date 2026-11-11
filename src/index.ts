@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import { commitRecord, lastHash, parseLedger, summarize, writeOutput } from './ledger.js';
 import { recordRun } from './record.js';
 import { renderJson, renderSummaryMarkdown, renderVerifyMarkdown } from './render.js';
@@ -87,7 +85,7 @@ function enumFlag<const T extends readonly string[]>(
   return value as T[number];
 }
 
-async function main(argv: string[]): Promise<number> {
+export async function main(argv: string[]): Promise<number> {
   const parsed = parse(argv);
   const [cmd, ledgerArg] = parsed.positional;
   if (!cmd || cmd === 'help' || cmd === 'examples' || parsed.flags.has('help') || parsed.flags.has('examples')) {
@@ -134,24 +132,6 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
   throw new Error(`unknown command: ${cmd}`);
-}
-
-function isMain(moduleUrl: string, argvEntry: string | undefined): boolean {
-  if (!argvEntry) return false;
-  try {
-    return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argvEntry);
-  } catch {
-    return false;
-  }
-}
-
-if (isMain(import.meta.url, process.argv[1])) {
-  main(process.argv.slice(2)).then((code) => {
-    process.exitCode = code;
-  }).catch((error: unknown) => {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exitCode = 1;
-  });
 }
 
 export { parseLedger, summarize };

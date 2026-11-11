@@ -9,6 +9,7 @@ cd "$repo_root"
 npm run build
 test -f dist/src/index.js
 test -f dist/src/index.d.ts
+test -f dist/src/cli.js
 test -f examples/sample-runs.jsonl
 
 tarfile="$(npm pack --silent --pack-destination "$install_dir")"
@@ -19,7 +20,7 @@ node -e '
   const packageJson = JSON.parse(process.argv[1]);
   if (packageJson.name !== "@rogerchappel/runledger") throw new Error(`unexpected package name: ${packageJson.name}`);
   if (packageJson.repository?.url !== "git+https://github.com/rogerchappel/runledger.git") throw new Error("unexpected repository URL");
-  if (packageJson.bin?.runledger !== "./dist/src/index.js") throw new Error("runledger binary is missing or changed");
+  if (packageJson.bin?.runledger !== "./dist/src/cli.js") throw new Error("runledger binary is missing or changed");
 ' "$package_json"
 grep -Fq 'npm install --global @rogerchappel/runledger@<published-version>' README.md
 grep -Fq 'do not use `npm install --global @rogerchappel/runledger` before' README.md
